@@ -55,12 +55,25 @@ func (a SortedAttrs) Less(i, j int) bool {
 		return false
 	}
 
-	// Wow. We're still going. Finally, attributes in the same namespace should be
-	// sorted by key. Attributes in different namespaces should be sorted by the
-	// actual namespace (_not_ the prefix). For now just use the prefix.
+	// Attributes with the same prefix should be sorted by their keys.
 	if a[i].Space == a[j].Space {
 		return a[i].Key < a[j].Key
 	}
 
-	return a[i].Space < a[j].Space
+	// Attributes in the same namespace are sorted by their Namespace URI, not the prefix.
+	if a[i].Key == a[j].Key {
+		var leftNS, rightNS etree.Attr
+		for n := range a {
+			if a[i].Space == a[n].Key {
+				leftNS = a[n]
+			}
+			if a[j].Space == a[n].Key {
+				rightNS = a[n]
+			}
+		}
+		// Sort based on the NS URIs
+		return leftNS.Value < rightNS.Value
+	}
+
+	return a[i].Key < a[j].Key
 }
