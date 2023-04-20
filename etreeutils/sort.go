@@ -61,6 +61,10 @@ func (a SortedAttrs) Less(i, j int) bool {
 	}
 
 	// Attributes in the same namespace are sorted by their Namespace URI, not the prefix.
+	// NOTE: This implementation is not complete because it does not consider namespace
+	// prefixes declared in ancestor elements. A complete solution would ideally use the
+	// Attribute.NamespaceURI() method obtain a namespace URI for sorting, but the
+	// beevik/etree library needs to be fixed to provide the correct value first.
 	if a[i].Key == a[j].Key {
 		var leftNS, rightNS etree.Attr
 		for n := range a {
