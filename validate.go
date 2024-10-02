@@ -19,8 +19,8 @@ var whiteSpace = regexp.MustCompile("\\s+")
 var (
 	// ErrMissingSignature indicates that no enveloped signature was found referencing
 	// the top level element passed for signature verification.
-	ErrMissingSignature = errors.New("Missing signature referencing the top-level element")
-	ErrInvalidSignature = errors.New("Invalid Signature")
+	ErrMissingSignature = errors.New("missing signature referencing the top-level element")
+	ErrInvalidSignature = errors.New("invalid Signature")
 )
 
 type ValidationContext struct {
@@ -126,7 +126,7 @@ func (ctx *ValidationContext) transform(
 		switch AlgorithmID(algo) {
 		case EnvelopedSignatureAltorithmId:
 			if !removeElementAtPath(el, signaturePath) {
-				return nil, nil, errors.New("Error applying canonicalization transform: Signature not found")
+				return nil, nil, errors.New("error applying canonicalization transform: Signature not found")
 			}
 
 		case CanonicalXML10ExclusiveAlgorithmId:
@@ -158,7 +158,7 @@ func (ctx *ValidationContext) transform(
 			canonicalizer = MakeC14N10WithCommentsCanonicalizer()
 
 		default:
-			return nil, nil, errors.New("Unknown Transform Algorithm: " + algo)
+			return nil, nil, errors.New("unknown transform algorithm: " + algo)
 		}
 	}
 
@@ -177,7 +177,7 @@ func (ctx *ValidationContext) digest(el *etree.Element, digestAlgorithmId string
 
 	digestAlgorithm, ok := digestAlgorithmsByIdentifier[digestAlgorithmId]
 	if !ok {
-		return nil, errors.New("Unknown digest algorithm: " + digestAlgorithmId)
+		return nil, errors.New("unknown digest algorithm: " + digestAlgorithmId)
 	}
 
 	hash := digestAlgorithm.New()
@@ -203,7 +203,7 @@ func (ctx *ValidationContext) verifySignedInfo(sig *types.Signature, canonicaliz
 	}
 
 	if signedInfo == nil {
-		return errors.New("Missing SignedInfo")
+		return errors.New("missing SignedInfo")
 	}
 
 	// Canonicalize the xml
@@ -214,7 +214,7 @@ func (ctx *ValidationContext) verifySignedInfo(sig *types.Signature, canonicaliz
 
 	algo, ok := x509SignatureAlgorithmByIdentifier[signatureMethodId]
 	if !ok {
-		return errors.New("Unknown signature method: " + signatureMethodId)
+		return errors.New("unknown signature method: " + signatureMethodId)
 	}
 
 	err = cert.CheckSignature(algo, canonical, decodedSignature)
@@ -262,16 +262,16 @@ func (ctx *ValidationContext) validateSignature(el *etree.Element, sig *types.Si
 	}
 
 	if !bytes.Equal(digest, decodedDigestValue) {
-		return nil, errors.New("Signature could not be verified")
+		return nil, errors.New("signature could not be verified")
 	}
 	if sig.SignatureValue == nil {
-		return nil, errors.New("Signature could not be verified")
+		return nil, errors.New("signature could not be verified")
 	}
 
 	// Decode the 'SignatureValue' so we can compare against it
 	decodedSignature, err := base64.StdEncoding.DecodeString(sig.SignatureValue.Data)
 	if err != nil {
-		return nil, errors.New("Could not decode signature")
+		return nil, errors.New("could not decode signature")
 	}
 
 	// Actually verify the 'SignedInfo' was signed by a trusted source
@@ -384,7 +384,7 @@ func (ctx *ValidationContext) findSignature(root *etree.Element) (*types.Signatu
 		}
 
 		if !found {
-			return errors.New("Missing SignedInfo")
+			return errors.New("missing SignedInfo")
 		}
 
 		// Unmarshal the signature into a structured Signature type
@@ -436,7 +436,7 @@ func (ctx *ValidationContext) verifyCertificate(sig *types.Signature) (*x509.Cer
 		certData, err := base64.StdEncoding.DecodeString(
 			whiteSpace.ReplaceAllString(sig.KeyInfo.X509Data.X509Certificates[0].Data, ""))
 		if err != nil {
-			return nil, errors.New("Failed to parse certificate")
+			return nil, errors.New("failed to parse certificate")
 		}
 
 		cert, err = x509.ParseCertificate(certData)
@@ -448,17 +448,17 @@ func (ctx *ValidationContext) verifyCertificate(sig *types.Signature) (*x509.Cer
 		if len(roots) == 1 {
 			cert = roots[0]
 		} else {
-			return nil, errors.New("Missing x509 Element")
+			return nil, errors.New("missing x509 Element")
 		}
 	}
 
 	// Verify that the certificate is one we trust
 	if !contains(roots, cert) {
-		return nil, errors.New("Could not verify certificate against trusted certs")
+		return nil, errors.New("could not verify certificate against trusted certs")
 	}
 
 	if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
-		return nil, errors.New("Cert is not valid at this time")
+		return nil, errors.New("cert is not valid at this time")
 	}
 
 	return cert, nil

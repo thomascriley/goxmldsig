@@ -1,6 +1,7 @@
 package dsig
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -9,7 +10,8 @@ import (
 )
 
 type X509KeyStore interface {
-	GetKeyPair() (privateKey *rsa.PrivateKey, cert []byte, err error)
+	GetKeyPair() (privateKey crypto.PrivateKey, cert []byte, err error)
+	PublicKeyAlgorithm() x509.PublicKeyAlgorithm
 }
 
 type X509ChainStore interface {
@@ -29,13 +31,14 @@ func (mX509cs *MemoryX509CertificateStore) Certificates() ([]*x509.Certificate, 
 }
 
 type MemoryX509KeyStore struct {
-	privateKey *rsa.PrivateKey
+	privateKey crypto.PrivateKey
 	cert       []byte
 }
 
-func (ks *MemoryX509KeyStore) GetKeyPair() (*rsa.PrivateKey, []byte, error) {
+func (ks *MemoryX509KeyStore) GetKeyPair() (crypto.PrivateKey, []byte, error) {
 	return ks.privateKey, ks.cert, nil
 }
+func (ks *MemoryX509KeyStore) PublicKeyAlgorithm() x509.PublicKeyAlgorithm { return x509.RSA }
 
 func RandomKeyStoreForTest() X509KeyStore {
 	key, err := rsa.GenerateKey(rand.Reader, 1024)
@@ -46,10 +49,9 @@ func RandomKeyStoreForTest() X509KeyStore {
 	now := time.Now()
 
 	template := &x509.Certificate{
-		SerialNumber: big.NewInt(0),
-		NotBefore:    now.Add(-5 * time.Minute),
-		NotAfter:     now.Add(365 * 24 * time.Hour),
-
+		SerialNumber:          big.NewInt(0),
+		NotBefore:             now.Add(-5 * time.Minute),
+		NotAfter:              now.Add(365 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{},
 		BasicConstraintsValid: true,

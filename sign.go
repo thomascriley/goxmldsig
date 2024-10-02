@@ -64,17 +64,16 @@ func NewSigningContext(signer crypto.Signer, certs [][]byte) (*SigningContext, e
 
 func (ctx *SigningContext) getPublicKeyAlgorithm() x509.PublicKeyAlgorithm {
 	if ctx.KeyStore != nil {
-		return x509.RSA
-	} else {
-		switch ctx.signer.Public().(type) {
-		case *ecdsa.PublicKey:
-			return x509.ECDSA
-		case *rsa.PublicKey:
-			return x509.RSA
-		}
+		return ctx.KeyStore.PublicKeyAlgorithm()
 	}
-
-	return x509.UnknownPublicKeyAlgorithm
+	switch ctx.signer.Public().(type) {
+	case *ecdsa.PublicKey:
+		return x509.ECDSA
+	case *rsa.PublicKey:
+		return x509.RSA
+	default:
+		return x509.UnknownPublicKeyAlgorithm
+	}
 }
 
 func (ctx *SigningContext) SetSignatureMethod(algorithmID string) error {
@@ -108,27 +107,25 @@ func (ctx *SigningContext) digest(el *etree.Element) ([]byte, error) {
 	return hash.Sum(nil), nil
 }
 
-func (ctx *SigningContext) signDigest(digest []byte) ([]byte, error) {
+func (ctx *SigningContext) signDigest(digest []byte) (raw []byte, err error) {
 	if ctx.KeyStore != nil {
-		key, _, err := ctx.KeyStore.GetKeyPair()
-		if err != nil {
+		var key crypto.PrivateKey
+		if key, _, err = ctx.KeyStore.GetKeyPair(); err != nil {
 			return nil, err
 		}
 
-		rawSignature, err := rsa.SignPKCS1v15(rand.Reader, key, ctx.Hash, digest)
-		if err != nil {
-			return nil, err
+		var signer crypto.Signer
+		switch k := key.(type) {
+		case *rsa.PrivateKey:
+			signer = k
+		case *ecdsa.PrivateKey:
+			signer = k
+		default:
+			return nil, x509.ErrUnsupportedAlgorithm
 		}
-
-		return rawSignature, nil
-	} else {
-		rawSignature, err := ctx.signer.Sign(rand.Reader, digest, ctx.Hash)
-		if err != nil {
-			return nil, err
-		}
-
-		return rawSignature, nil
+		return signer.Sign(rand.Reader, digest, ctx.Hash)
 	}
+	return ctx.signer.Sign(rand.Reader, digest, ctx.Hash)
 }
 
 func (ctx *SigningContext) getCerts() ([][]byte, error) {
@@ -318,7 +315,7 @@ func (ctx *SigningContext) GetDigestAlgorithmIdentifier() string {
 	return ""
 }
 
-// Useful for signing query string (including DEFLATED AuthnRequest) when
+// SignString Useful for signing query string (including DEFLATED AuthnRequest) when
 // using HTTP-Redirect to make a signed request.
 // See 3.4.4.1 DEFLATE Encoding of https://docs.oasis-open.org/security/saml/v2.0/saml-bindings-2.0-os.pdf
 func (ctx *SigningContext) SignString(content string) ([]byte, error) {
