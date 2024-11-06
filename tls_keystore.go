@@ -18,11 +18,14 @@ var (
 type TLSCertKeyStore tls.Certificate
 
 // GetKeyPair implements X509KeyStore using the underlying tls.Certificate
-func (d TLSCertKeyStore) GetKeyPair() (crypto.PrivateKey, []byte, error) {
+func (d TLSCertKeyStore) GetKeyPair() (crypto.Signer, []byte, error) {
 	if len(d.Certificate) < 1 {
 		return nil, nil, ErrMissingCertificates
 	}
-	return d.PrivateKey, d.Certificate[0], nil
+	if signer, ok := d.PrivateKey.(crypto.Signer); ok {
+		return signer, d.Certificate[0], nil
+	}
+	return nil, nil, x509.ErrUnsupportedAlgorithm
 }
 
 func (d TLSCertKeyStore) PublicKeyAlgorithm() x509.PublicKeyAlgorithm {

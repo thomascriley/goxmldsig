@@ -10,7 +10,7 @@ import (
 )
 
 type X509KeyStore interface {
-	GetKeyPair() (privateKey crypto.PrivateKey, cert []byte, err error)
+	GetKeyPair() (privateKey crypto.Signer, cert []byte, err error)
 	PublicKeyAlgorithm() x509.PublicKeyAlgorithm
 }
 
@@ -31,11 +31,11 @@ func (mX509cs *MemoryX509CertificateStore) Certificates() ([]*x509.Certificate, 
 }
 
 type MemoryX509KeyStore struct {
-	privateKey crypto.PrivateKey
+	privateKey crypto.Signer
 	cert       []byte
 }
 
-func (ks *MemoryX509KeyStore) GetKeyPair() (crypto.PrivateKey, []byte, error) {
+func (ks *MemoryX509KeyStore) GetKeyPair() (crypto.Signer, []byte, error) {
 	return ks.privateKey, ks.cert, nil
 }
 func (ks *MemoryX509KeyStore) PublicKeyAlgorithm() x509.PublicKeyAlgorithm { return x509.RSA }
